@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEO Terminal Interface</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        :root {
+            --bg-dark: #090f1c;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --leo-blue: #00f0ff;
+            --leo-glow: rgba(0, 240, 255, 0.3);
+            --text-main: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Orbitron', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .hud-container {
+            width: 440px;
+            height: 580px;
+            background: var(--panel-bg);
+            border: 2px solid var(--leo-blue);
+            box-shadow: 0 0 25px var(--leo-glow), inset 0 0 15px var(--leo-glow);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .header {
+            font-size: 1.3rem;
+            letter-spacing: 4px;
+            color: var(--leo-blue);
+            text-shadow: 0 0 8px var(--leo-blue);
+            font-weight: bold;
+        }
+
+        /* SVG Core Wrapper */
+        .core-wrapper {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .outer-glow-circle {
+            fill: transparent;
+            stroke: #1b0bf4;
+            stroke-width: 1.5;
+        }
+
+        .rotating-dashed-circle1 {
+            fill: transparent;
+            stroke: #05d3fd;
+            stroke-width: 4;
+            stroke-dasharray: 80;
+            transform-origin: center;
+            animation: rotateClockwise 12s linear infinite;
+        }
+
+        .rotating-dashed-circle2 {
+            fill: transparent;
+            stroke: #00f2ff;
+            stroke-width: 12;
+            stroke-dasharray: 4, 6;
+            transform-origin: center;
+            animation: rotateCounterClockwise 10s linear infinite;
+        }
+
+        .dynamic-dashed-circle {
+            fill: transparent;
+            stroke: #B4F6FB;
+            stroke-width: 2;
+            stroke-dasharray: 10, 15;
+            transform-origin: center;
+            animation: rotateClockwise 8s linear infinite;
+        }
+
+        .inner-glow-circle {
+            fill: #04a3f2;
+            filter: url(#glow);
+            opacity: 0.35;
+            transform-origin: center;
+            transition: all 0.5s ease;
+        }
+
+        .pulsating-center-circle {
+            fill: #03bbf8;
+            filter: url(#glow);
+            opacity: 0.7;
+            transform-origin: center;
+        }
+
+        .rotating-path {
+            fill: none;
+            stroke: #06deb3;
+            stroke-width: 1;
+            stroke-dasharray: 5, 5;
+            transform-origin: center;
+            animation: rotateClockwise 6s linear infinite;
+        }
+
+        .main-text {
+            fill: #ffffff;
+            font-size: 26px;
+            letter-spacing: 2px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 0 0 10px var(--leo-blue);
+            transition: all 0.5s ease;
+        }
+
+        /* Core Animation Timings */
+        @keyframes rotateClockwise {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotateCounterClockwise {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+
+        /* ACTIVE PROCESSING STATE OVERRIDES */
+        .active .inner-glow-circle {
+            fill: #00f2ff;
+            opacity: 0.8;
+        }
+
+        .active .rotating-dashed-circle1 {
+            stroke: #00f2ff;
+            animation-duration: 3s;
+        }
+
+        .active .rotating-dashed-circle2 {
+            stroke: #00f2ff;
+            animation-duration: 2s;
+        }
+
+        .active .main-text {
+            fill: #ffffff;
+            text-shadow: 0 0 15px #00f2ff;
+        }
+
+        /* Terminal Logs Layout */
+        .terminal-box {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            box-sizing: border-box;
+            min-height: 140px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .line {
+            margin-bottom: 8px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .user-line { color: #94a3b8; }
+        .leo-line { 
+            color: var(--leo-blue); 
+            text-shadow: 0 0 4px var(--leo-glow);
+        }
+
+        .footer {
+            font-size: 0.65rem;
+            color: rgba(0, 240, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-container">
+        <div class="header">L.E.O SYSTEM</div>
+
+        <div class="core-wrapper" id="core-container">
+            <svg viewBox="0 0 600 600">
+                <defs>
+                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+
+                <circle cx="300" cy="300" r="220" class="outer-glow-circle" />
+                <circle cx="300" cy="300" r="210" class="rotating-dashed-circle1" />
+                <circle cx="300" cy="300" r="190" class="rotating-dashed-circle2" />
+                <circle cx="300" cy="300" r="165" class="dynamic-dashed-circle" />
+                
+                <circle cx="300" cy="300" r="95" class="inner-glow-circle" />
+                <circle cx="300" cy="300" r="65" class="pulsating-center-circle" />
+
+                <path d="M230,300 A70,70 0 0,1 370,300 A70,70 0 0,1 230,300" class="rotating-path" />
+
+                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="main-text">L.E.O</text>
+            </svg>
+        </div>
+
+        <div class="terminal-box">
+            <div class="line user-line" id="user-display">SYSTEM: Hands-free mode active...</div>
+            <div class="line leo-line" id="leo-display">LEO: Online and waiting.</div>
+        </div>
+
+        <div class="footer">Logic & Execution Orchestrator</div>
+    </div>
+
+    <script>
+        const coreContainer = document.getElementById('core-container');
+        const userDisplay = document.getElementById('user-display');
+        const leoDisplay = document.getElementById('leo-display');
+
+        function updateUserSpeech(text) {
+            userDisplay.innerText = "YOU: " + text;
+        }
+
+        function updateLeoSpeech(text) {
+            leoDisplay.innerText = "LEO: " + text;
+        }
+
+        function setVisualState(state) {
+            if (state === 'active') {
+                coreContainer.classList.add('active');
+            } else {
+                coreContainer.classList.remove('active');
+            }
+        }
+
+        // Auto-Sync HUD state with Python backend
+        setInterval(() => {
+            fetch('/get_hud_status')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.user_text) updateUserSpeech(data.user_text);
+                    if (data.leo_text) updateLeoSpeech(data.leo_text);
+                    setVisualState(data.state);
+                })
+                .catch(() => {});
+        }, 500);
+    </script>
+</body>
+</html>
