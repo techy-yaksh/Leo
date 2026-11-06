@@ -1,0 +1,35 @@
+# Core Web Server & Desktop GUI
+flask>=2.0.0
+pywebview>=4.0.0
+python-dotenv>=1.0.0
+
+# AI & Multimodal LLM Inference
+groq>=0.9.0
+google-genai>=2.30.1
+
+# Screen Vision & Image Processing
+pillow>=10.0.0
+mss>=10.0.0
+
+# Speech Recognition & Wake-Word
+openwakeword>=0.5.0
+pyaudio>=0.2.14
+SpeechRecognition>=3.10.0
+numpy>=1.24.0
+
+# Neural Voice Synthesis & Audio Playback
+edge-tts>=7.3.1
+pygame>=2.5.0
+pyttsx3>=2.90
+
+# Global Hotkeys
+pynput>=1.7.6
+
+# System Monitoring & Windows Audio Control
+psutil>=5.9.0
+pycaw>=20230407
+comtypes>=1.2.0
+
+# External Integrations
+spotipy>=2.23.0
+duckduckgo-search>=6.0.0

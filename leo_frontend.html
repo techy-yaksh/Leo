@@ -3,277 +3,918 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEO Terminal Interface</title>
+    <title>L.E.O. HUD Terminal</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;700&family=Rajdhani:wght@500;600;700&display=swap');
 
         :root {
-            --bg-dark: #090f1c;
-            --panel-bg: rgba(15, 23, 42, 0.75);
-            --leo-blue: #00f0ff;
-            --leo-glow: rgba(0, 240, 255, 0.3);
-            --text-main: #e2e8f0;
+            --bg-color: #030712;
+            --border-cyan: rgba(0, 240, 255, 0.35);
+            --glow-cyan: rgba(0, 240, 255, 0.25);
+            --neon-cyan: #00F0FF;
+            --neon-gold: #FFD700;
+            --neon-amber: #FF9E0B;
+            --neon-emerald: #10B981;
+            --text-main: #E2E8F0;
+            --text-dim: #64748B;
+            --panel-bg: rgba(6, 16, 37, 0.88);
+            --panel-border: rgba(0, 240, 255, 0.25);
         }
 
-        body {
+        * {
+            box-sizing: border-box;
+            user-select: none;
             margin: 0;
             padding: 0;
-            font-family: 'Orbitron', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+        }
+
+        html, body {
+            width: 100vw;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            background-color: var(--bg-color) !important;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
             overflow: hidden;
-            user-select: none;
         }
 
-        .hud-container {
-            width: 440px;
-            height: 580px;
-            background: var(--panel-bg);
-            border: 2px solid var(--leo-blue);
-            box-shadow: 0 0 25px var(--leo-glow), inset 0 0 15px var(--leo-glow);
-            border-radius: 20px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: space-between;
-            box-sizing: border-box;
-            position: relative;
-        }
-
-        .header {
-            font-size: 1.3rem;
-            letter-spacing: 4px;
-            color: var(--leo-blue);
-            text-shadow: 0 0 8px var(--leo-blue);
-            font-weight: bold;
-        }
-
-        /* SVG Core Wrapper */
-        .core-wrapper {
-            position: relative;
-            width: 240px;
-            height: 240px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        svg {
+        /* ======================================================================
+           PHASE 1.1: BASE HUD (FLOATING LOGO STATE: 150px x 150px)
+           ====================================================================== */
+        .hud-card {
             width: 100%;
             height: 100%;
+            border-radius: 12px;
+            background: #030712;
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            -webkit-app-region: drag;
+            cursor: grab;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
-        .outer-glow-circle {
-            fill: transparent;
-            stroke: #1b0bf4;
-            stroke-width: 1.5;
+        .hud-card:active {
+            cursor: grabbing;
         }
 
-        .rotating-dashed-circle1 {
-            fill: transparent;
-            stroke: #05d3fd;
-            stroke-width: 4;
-            stroke-dasharray: 80;
-            transform-origin: center;
-            animation: rotateClockwise 12s linear infinite;
+        /* 3D Core Stage */
+        .hud-stage-3d {
+            width: 140px;
+            height: 140px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 600px;
         }
 
-        .rotating-dashed-circle2 {
-            fill: transparent;
-            stroke: #00f2ff;
-            stroke-width: 12;
-            stroke-dasharray: 4, 6;
-            transform-origin: center;
-            animation: rotateCounterClockwise 10s linear infinite;
+        .sphere-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: float3D 4s ease-in-out infinite;
         }
 
-        .dynamic-dashed-circle {
-            fill: transparent;
-            stroke: #B4F6FB;
-            stroke-width: 2;
-            stroke-dasharray: 10, 15;
-            transform-origin: center;
-            animation: rotateClockwise 8s linear infinite;
+        .layer-flat, .layer-gyro-y, .layer-gyro-x {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
         }
 
-        .inner-glow-circle {
-            fill: #04a3f2;
-            filter: url(#glow);
-            opacity: 0.35;
-            transform-origin: center;
-            transition: all 0.5s ease;
+        /* Default (Standby / Idle) Gyro Spin Animations */
+        .layer-gyro-y { animation: spinY 12s linear infinite; }
+        .layer-gyro-x { animation: spinX 9s linear infinite; }
+
+        @keyframes spinY {
+            from { transform: rotateY(0deg) rotateZ(0deg); }
+            to { transform: rotateY(360deg) rotateZ(360deg); }
         }
 
-        .pulsating-center-circle {
-            fill: #03bbf8;
-            filter: url(#glow);
-            opacity: 0.7;
-            transform-origin: center;
+        @keyframes spinX {
+            from { transform: rotateX(0deg) rotateZ(0deg); }
+            to { transform: rotateX(360deg) rotateZ(-360deg); }
         }
 
-        .rotating-path {
-            fill: none;
-            stroke: #06deb3;
-            stroke-width: 1;
-            stroke-dasharray: 5, 5;
-            transform-origin: center;
-            animation: rotateClockwise 6s linear infinite;
-        }
-
-        .main-text {
-            fill: #ffffff;
-            font-size: 26px;
-            letter-spacing: 2px;
-            font-weight: bold;
-            pointer-events: none;
-            text-shadow: 0 0 10px var(--leo-blue);
-            transition: all 0.5s ease;
-        }
-
-        /* Core Animation Timings */
-        @keyframes rotateClockwise {
+        @keyframes spinCW {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
-        @keyframes rotateCounterClockwise {
-            from { transform: rotate(360deg); }
-            to { transform: rotate(0deg); }
+        @keyframes spinCCW {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-360deg); }
         }
 
-        /* ACTIVE PROCESSING STATE OVERRIDES */
-        .active .inner-glow-circle {
-            fill: #00f2ff;
-            opacity: 0.8;
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 0.85; }
+            50% { transform: scale(1.15); opacity: 1; filter: drop-shadow(0 0 10px #FFD700); }
         }
 
-        .active .rotating-dashed-circle1 {
-            stroke: #00f2ff;
-            animation-duration: 3s;
+        @keyframes float3D {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
         }
 
-        .active .rotating-dashed-circle2 {
-            stroke: #00f2ff;
-            animation-duration: 2s;
+        /* Base Floating Status Label */
+        .status-label {
+            position: absolute;
+            bottom: 8px;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.8), 0 0 8px #030712;
+            z-index: 10;
+            pointer-events: none;
         }
 
-        .active .main-text {
-            fill: #ffffff;
-            text-shadow: 0 0 15px #00f2ff;
+        /* ======================================================================
+           PHASE 2: DYNAMIC STATE INDICATORS (IDLE, LISTENING, PROCESSING, SPEAKING)
+           ====================================================================== */
+        /* --- LISTENING MODE --- */
+        .hud-stage-3d.listening-mode .layer-gyro-y { animation: spinY 2.4s linear infinite !important; }
+        .hud-stage-3d.listening-mode .layer-gyro-x { animation: spinX 1.8s linear infinite !important; }
+        .hud-stage-3d.listening-mode .central-core {
+            fill: #00F0FF !important;
+            filter: drop-shadow(0 0 12px #00F0FF) !important;
+        }
+        .hud-card:has(.hud-stage-3d.listening-mode) {
+            border-color: rgba(0, 240, 255, 0.85);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.45);
         }
 
-        /* Terminal Logs Layout */
-        .terminal-box {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            padding: 15px;
-            border-radius: 10px;
-            box-sizing: border-box;
-            min-height: 140px;
-            font-size: 0.85rem;
-            font-family: monospace;
+        /* --- PROCESSING / THINKING MODE --- */
+        .hud-stage-3d.thinking-mode .layer-gyro-y { animation: spinY 3.8s linear infinite !important; }
+        .hud-stage-3d.thinking-mode .layer-gyro-x { animation: spinX 3.0s linear infinite !important; }
+        .hud-stage-3d.thinking-mode .central-core {
+            fill: #FF9E0B !important;
+            filter: drop-shadow(0 0 14px #FFD700) !important;
+        }
+        .hud-card:has(.hud-stage-3d.thinking-mode) {
+            border-color: rgba(255, 180, 0, 0.8);
+            box-shadow: 0 0 20px rgba(255, 180, 0, 0.4);
+        }
+
+        /* --- SPEAKING MODE --- */
+        .hud-stage-3d.speaking-mode .layer-gyro-y { animation: spinY 4.5s linear infinite !important; }
+        .hud-stage-3d.speaking-mode .layer-gyro-x { animation: spinX 3.5s linear infinite !important; }
+        .hud-stage-3d.speaking-mode .central-core {
+            fill: #FFD700 !important;
+            filter: drop-shadow(0 0 14px #FFD700) !important;
+        }
+        .hud-card:has(.hud-stage-3d.speaking-mode) {
+            border-color: rgba(255, 215, 0, 0.8);
+            box-shadow: 0 0 22px rgba(255, 215, 0, 0.4);
+        }
+
+        /* ======================================================================
+           PHASE 1.2: MAXIMIZED HUD (TOGGLED VIA F8 HOTKEY: 1280px x 800px)
+           ====================================================================== */
+        .hud-card.expanded {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            gap: 12px;
+            background: #02060f;
+            box-shadow: inset 0 0 40px rgba(0, 240, 255, 0.08);
+            cursor: default;
+            border: none;
+            overflow: hidden;
         }
 
-        .line {
-            margin-bottom: 8px;
-            line-height: 1.4;
+        .terminal-panel {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-height: 0;
+        }
+
+        .hud-card.expanded .terminal-panel {
+            display: flex;
+            opacity: 1;
+        }
+
+        .hud-card.expanded .status-label {
+            display: none;
+        }
+
+        /* Maximized Topbar */
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--panel-border);
+            -webkit-app-region: drag;
+            cursor: grab;
+        }
+
+        .terminal-header:active {
+            cursor: grabbing;
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+
+        .status-pill {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .status-pill.listening { color: #38bdf8; border-color: #38bdf8; background: rgba(56, 189, 248, 0.15); }
+        .status-pill.thinking { color: var(--neon-amber); border-color: var(--neon-amber); background: rgba(255, 158, 11, 0.15); }
+        .status-pill.speaking { color: var(--neon-gold); border-color: var(--neon-gold); background: rgba(255, 215, 0, 0.15); }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .key-hint {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        kbd {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 2px 6px;
+            color: var(--neon-cyan);
+            font-size: 0.7rem;
+        }
+
+        .btn-ctrl {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--border-cyan);
+            color: var(--neon-cyan);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-ctrl:hover {
+            background: rgba(0, 240, 255, 0.25);
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .btn-vision {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: var(--neon-gold);
+        }
+
+        .btn-vision:hover {
+            background: rgba(255, 215, 0, 0.25);
+            box-shadow: 0 0 12px var(--neon-gold);
+        }
+
+        /* Maximized Main Split Grid */
+        .terminal-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+            margin-top: 8px;
+        }
+
+        /* Left Docked Sidebar */
+        .terminal-sidebar {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 0;
+            overflow-y: auto;
+            gap: 12px;
+        }
+
+        .hud-card.expanded .hud-stage-3d {
+            width: 170px;
+            height: 170px;
+        }
+
+        /* Audio Visualizer Spectrum */
+        .spectrum-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            width: 100%;
+            height: 32px;
+            gap: 3px;
+            padding: 3px 6px;
+            background: rgba(2, 6, 15, 0.6);
+            border-radius: 4px;
+            border: 1px solid rgba(0, 240, 255, 0.15);
+        }
+
+        .spectrum-bar {
+            flex: 1;
+            background: linear-gradient(180deg, var(--neon-cyan) 0%, rgba(0, 240, 255, 0.1) 100%);
+            border-radius: 2px;
+            height: 15%;
+            transition: height 0.12s ease;
+        }
+
+        /* Telemetry Rows */
+        .telemetry-list {
+            width: 100%;
+            font-size: 0.72rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-dim);
+        }
+
+        .telemetry-row span.val {
+            color: var(--neon-cyan);
+            font-weight: bold;
+        }
+
+        .btn-mic-action {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(0, 240, 255, 0.08);
+            border: 1px solid var(--border-cyan);
+            border-radius: 6px;
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            -webkit-app-region: no-drag;
+        }
+
+        .btn-mic-action:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+        }
+
+        .btn-mic-action.active {
+            background: var(--neon-cyan);
+            color: #030712;
+            box-shadow: 0 0 18px var(--neon-cyan);
+        }
+
+        /* Right Console & Dialogue Stream */
+        .terminal-console {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            -webkit-app-region: no-drag;
+        }
+
+        .dialogue-history {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 8px;
+            font-size: 0.85rem;
+            min-height: 0;
+        }
+
+        .dialogue-history::-webkit-scrollbar {
+            width: 5px;
+        }
+        .dialogue-history::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .msg-box {
+            padding: 12px 14px;
+            border-radius: 6px;
+            line-height: 1.55;
             word-wrap: break-word;
         }
 
-        .user-line { color: #94a3b8; }
-        .leo-line { 
-            color: var(--leo-blue); 
-            text-shadow: 0 0 4px var(--leo-glow);
+        .msg-user {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid #94A3B8;
+            color: #CBD5E1;
         }
 
-        .footer {
+        .msg-leo {
+            background: rgba(0, 240, 255, 0.05);
+            border-left: 3px solid var(--neon-cyan);
+            color: #F8FAFC;
+        }
+
+        .msg-tag {
             font-size: 0.65rem;
-            color: rgba(0, 240, 255, 0.4);
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .msg-user .msg-tag { color: #94A3B8; }
+        .msg-leo .msg-tag { color: var(--neon-cyan); }
+
+        .streaming-cursor {
+            display: inline-block;
+            width: 7px;
+            height: 14px;
+            background: var(--neon-cyan);
+            margin-left: 4px;
+            vertical-align: middle;
+            animation: cursorBlink 0.8s infinite;
+        }
+
+        @keyframes cursorBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Command Input Form */
+        .terminal-input-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: rgba(3, 7, 18, 0.85);
+            border: 1px solid var(--border-cyan);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: #FFF;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .terminal-input:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+        }
+
+        .btn-send {
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid var(--border-cyan);
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-send:hover {
+            background: #00F0FF;
+            color: #030712;
+            box-shadow: 0 0 12px var(--neon-cyan);
         }
     </style>
 </head>
 <body>
 
-    <div class="hud-container">
-        <div class="header">L.E.O SYSTEM</div>
+    <!-- MAIN HUD CONTAINER (Default: 150px x 150px Floating Logo) -->
+    <div class="hud-card" id="hud-card">
 
-        <div class="core-wrapper" id="core-container">
-            <svg viewBox="0 0 600 600">
-                <defs>
-                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="8" result="blur" />
-                        <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-                </defs>
+        <!-- 3D GYROSCOPIC REACTOR CORE -->
+        <div class="hud-stage-3d standby-mode" id="hud-stage" title="Press F8 to Toggle Maximized Terminal">
+            <div class="sphere-container">
 
-                <circle cx="300" cy="300" r="220" class="outer-glow-circle" />
-                <circle cx="300" cy="300" r="210" class="rotating-dashed-circle1" />
-                <circle cx="300" cy="300" r="190" class="rotating-dashed-circle2" />
-                <circle cx="300" cy="300" r="165" class="dynamic-dashed-circle" />
+                <div class="layer-flat">
+                    <svg viewBox="-20 -20 540 540" style="width: 100%; height: 100%; overflow: visible;">
+                        <defs>
+                            <filter id="neonGlowCyan" x="-40%" y="-40%" width="180%" height="180%">
+                                <feGaussianBlur stdDeviation="5" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                        </defs>
+
+                        <!-- Outer Scales -->
+                        <circle cx="250" cy="250" r="230" fill="none" stroke="rgba(0, 240, 255, 0.4)" stroke-width="2.5" />
+                        <circle cx="250" cy="250" r="220" fill="none" stroke="#00F0FF" stroke-width="3" stroke-dasharray="2 12" 
+                                style="transform-origin: 250px 250px; animation: spinCW 30s linear infinite;" opacity="0.9" />
+
+                        <!-- Outer Hex Grid -->
+                        <polygon points="250,70 405,160 405,340 250,430 95,340 95,160" 
+                                 fill="none" stroke="rgba(0, 240, 255, 0.6)" stroke-width="2.5" stroke-dasharray="20 10 60 10" 
+                                 style="transform-origin: 250px 250px; animation: spinCCW 18s linear infinite;" />
+
+                        <!-- Cyan Primary Triangle -->
+                        <polygon points="250,150 336.6,300 163.4,300" 
+                                 fill="rgba(0, 240, 255, 0.1)" stroke="#00F0FF" stroke-width="4" stroke-dasharray="120 30"
+                                 style="transform-origin: 250px 250px; animation: spinCW 7s linear infinite;" filter="url(#neonGlowCyan)" />
+
+                        <!-- Inner Gold Counter-Rotating Triangle -->
+                        <polygon points="250,320 180.7,200 319.3,200" 
+                                 fill="none" stroke="#FFD700" stroke-width="3.5" stroke-dasharray="60 20"
+                                 style="transform-origin: 250px 240px; animation: spinCCW 4s linear infinite;" />
+
+                        <!-- Central Core Node -->
+                        <circle cx="250" cy="250" r="18" fill="#FFD700" class="central-core" 
+                                style="transform-origin: 250px 250px; animation: pulseGlow 1.8s ease-in-out infinite;" />
+                        <circle cx="250" cy="250" r="8" fill="#FFFFFF" />
+                    </svg>
+                </div>
+
+                <!-- Gyro Y Ring -->
+                <div class="layer-gyro-y">
+                    <svg viewBox="-20 -20 540 540" style="width: 100%; height: 100%; overflow: visible;">
+                        <circle cx="250" cy="250" r="210" fill="none" stroke="#00F0FF" stroke-width="5" stroke-dasharray="140 30 40 30" filter="url(#neonGlowCyan)" />
+                    </svg>
+                </div>
+
+                <!-- Gyro X Ring -->
+                <div class="layer-gyro-x">
+                    <svg viewBox="-20 -20 540 540" style="width: 100%; height: 100%; overflow: visible;">
+                        <circle cx="250" cy="250" r="185" fill="none" stroke="#FFD700" stroke-width="5" stroke-dasharray="80 20 120 20" />
+                    </svg>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Floating Status Label (Visible only in Base 150x150 Mode) -->
+        <div class="status-label" id="hud-status-text">STANDBY</div>
+
+        <!-- MAXIMIZED HUD TERMINAL PANEL (Toggled via F8 Hotkey) -->
+        <div class="terminal-panel" id="terminal-panel">
+            
+            <!-- Terminal Header -->
+            <div class="terminal-header">
+                <div class="header-title-box">
+                    <span class="header-title">L.E.O. ORCHESTRATOR 2.5</span>
+                    <span class="status-pill" id="terminal-status-pill">STANDBY</span>
+                </div>
+                <div class="header-controls">
+                    <button class="btn-ctrl btn-vision" id="btn-screen-vision" title="Capture screen via MSS and analyze with Gemini 3.8 Flash">
+                        <span>👁️</span> ANALYZE SCREEN
+                    </button>
+                    <span class="key-hint"><kbd>Right Alt</kbd> PTT/Interrupt</span>
+                    <span class="key-hint"><kbd>F8</kbd> Toggle HUD</span>
+                    <button class="btn-ctrl" id="btn-toggle-hud" title="Minimize back to Floating Logo">&#x2921; Min</button>
+                </div>
+            </div>
+
+            <!-- Terminal Grid Body -->
+            <div class="terminal-grid">
                 
-                <circle cx="300" cy="300" r="95" class="inner-glow-circle" />
-                <circle cx="300" cy="300" r="65" class="pulsating-center-circle" />
+                <!-- Left Sidebar -->
+                <div class="terminal-sidebar" id="terminal-sidebar">
+                    <!-- 3D Gyro will be docked here when expanded -->
 
-                <path d="M230,300 A70,70 0 0,1 370,300 A70,70 0 0,1 230,300" class="rotating-path" />
+                    <!-- Live Audio Spectrum Visualizer -->
+                    <div class="spectrum-container" id="spectrum-bars">
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                        <div class="spectrum-bar"></div><div class="spectrum-bar"></div>
+                    </div>
 
-                <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" class="main-text">L.E.O</text>
-            </svg>
+                    <div class="telemetry-list">
+                        <div class="telemetry-row"><span>STATUS:</span> <span class="val" id="t-status">STANDBY</span></div>
+                        <div class="telemetry-row"><span>AI ENGINE:</span> <span class="val">Groq LPU (gpt-oss)</span></div>
+                        <div class="telemetry-row"><span>VISION:</span> <span class="val" style="color:var(--neon-gold)">Gemini 3.8 Flash</span></div>
+                        <div class="telemetry-row"><span>CPU / RAM:</span> <span class="val" id="t-telemetry">-- / --</span></div>
+                    </div>
+
+                    <button class="btn-mic-action" id="btn-mic" title="Trigger Push-to-Talk or Interrupt Speech">
+                        <span>🎙️</span> <span id="mic-btn-label">HOLD ALT / CLICK</span>
+                    </button>
+                </div>
+
+                <!-- Right Dialogue & Logs Console -->
+                <div class="terminal-console">
+                    <div class="dialogue-history" id="dialogue-history">
+                        <div class="msg-box msg-user">
+                            <span class="msg-tag">USER</span>
+                            <div id="user-display">System online. Standing by...</div>
+                        </div>
+                        <div class="msg-box msg-leo">
+                            <span class="msg-tag">L.E.O.</span>
+                            <div id="leo-display">Dual-engine pipeline active with Groq streaming and Gemini 3.8 Flash vision. Ready.</div>
+                        </div>
+                    </div>
+
+                    <form class="terminal-input-bar" id="command-form">
+                        <input type="text" class="terminal-input" id="command-input" placeholder="Type command, question, or 'What is on my screen?'..." autocomplete="off" />
+                        <button type="submit" class="btn-send">SEND</button>
+                    </form>
+                </div>
+
+            </div>
         </div>
 
-        <div class="terminal-box">
-            <div class="line user-line" id="user-display">SYSTEM: Hands-free mode active...</div>
-            <div class="line leo-line" id="leo-display">LEO: Online and waiting.</div>
-        </div>
-
-        <div class="footer">Logic & Execution Orchestrator</div>
     </div>
 
+    <!-- CLIENT LOGIC: SSE STREAMING, STATE MACHINE, F8 TOGGLE, PTT INTERRUPT -->
     <script>
-        const coreContainer = document.getElementById('core-container');
+        const hudCard = document.getElementById('hud-card');
+        const hudStage = document.getElementById('hud-stage');
+        const hudStatusText = document.getElementById('hud-status-text');
+        const terminalStatusPill = document.getElementById('terminal-status-pill');
+        const tStatus = document.getElementById('t-status');
+        const tTelemetry = document.getElementById('t-telemetry');
         const userDisplay = document.getElementById('user-display');
         const leoDisplay = document.getElementById('leo-display');
+        const btnToggleHud = document.getElementById('btn-toggle-hud');
+        const btnScreenVision = document.getElementById('btn-screen-vision');
+        const btnMic = document.getElementById('btn-mic');
+        const micBtnLabel = document.getElementById('mic-btn-label');
+        const commandForm = document.getElementById('command-form');
+        const commandInput = document.getElementById('command-input');
+        const dialogueHistory = document.getElementById('dialogue-history');
 
-        function updateUserSpeech(text) {
-            userDisplay.innerText = "YOU: " + text;
-        }
+        let isExpanded = false;
+        let currentState = 'standby';
+        let isStreaming = false;
 
-        function updateLeoSpeech(text) {
-            leoDisplay.innerText = "LEO: " + text;
-        }
+        // =====================================================================
+        // 1. STATE MACHINE SYNCHRONIZATION (IDLE, LISTENING, PROCESSING, SPEAKING)
+        // =====================================================================
+        function applyState(state) {
+            if (!state) state = 'standby';
+            state = state.toLowerCase().trim();
+            if (state === 'idle') state = 'standby';
+            if (state === 'processing') state = 'thinking';
 
-        function setVisualState(state) {
-            if (state === 'active') {
-                coreContainer.classList.add('active');
-            } else {
-                coreContainer.classList.remove('active');
+            currentState = state;
+
+            // Update 3D Stage Core Animation
+            hudStage.classList.remove('standby-mode', 'listening-mode', 'thinking-mode', 'speaking-mode');
+            hudStage.classList.add(`${state}-mode`);
+
+            // Update Labels
+            const upper = state.toUpperCase();
+            if (hudStatusText) hudStatusText.innerText = upper;
+            if (terminalStatusPill) {
+                terminalStatusPill.innerText = upper;
+                terminalStatusPill.className = `status-pill ${state}`;
+            }
+            if (tStatus) tStatus.innerText = upper;
+
+            // Mic button styling
+            if (btnMic) {
+                if (state === 'listening') {
+                    btnMic.classList.add('active');
+                    micBtnLabel.innerText = 'LISTENING...';
+                } else {
+                    btnMic.classList.remove('active');
+                    micBtnLabel.innerText = 'HOLD ALT / CLICK';
+                }
             }
         }
 
-        // Auto-Sync HUD state with Python backend
+        window.setHudState = function(state) {
+            applyState(state);
+        };
+
+        // =====================================================================
+        // 2. PHASE 1: GEOMETRY EXPAND/MINIMIZE (F8 TOGGLE)
+        // =====================================================================
+        function applyExpandedState(expanded) {
+            isExpanded = !!expanded;
+
+            if (isExpanded) {
+                hudCard.classList.add('expanded');
+                // Dock 3D stage inside the left sidebar of the maximized view
+                const sidebar = document.getElementById('terminal-sidebar');
+                if (sidebar && !sidebar.contains(hudStage)) {
+                    sidebar.insertBefore(hudStage, sidebar.firstChild);
+                }
+            } else {
+                hudCard.classList.remove('expanded');
+                // Return 3D stage to center of the floating 150x150 logo card
+                if (hudCard.firstChild !== hudStage) {
+                    hudCard.insertBefore(hudStage, hudCard.firstChild);
+                }
+            }
+        }
+
+        async function toggleExpand(forceState = null) {
+            const targetState = forceState !== null ? forceState : !isExpanded;
+            applyExpandedState(targetState);
+
+            try {
+                await fetch('/resize_hud', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expanded: targetState })
+                });
+            } catch (e) {
+                console.warn('[HUD Resize Error]', e);
+            }
+        }
+
+        btnToggleHud.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleExpand(false);
+        });
+
+        window.onBackendToggleExpand = function(expanded) {
+            applyExpandedState(expanded);
+        };
+
+        // =====================================================================
+        // 3. ZERO-LATENCY SSE TOKEN STREAMING (GROQ + VISION)
+        // =====================================================================
+        async function executeCommandStream(prompt) {
+            if (!prompt || isStreaming) return;
+            isStreaming = true;
+
+            // Ensure terminal is expanded when user interacts
+            if (!isExpanded) {
+                toggleExpand(true);
+            }
+
+            // 1. Append user message
+            userDisplay.innerText = prompt;
+            leoDisplay.innerText = '';
+
+            const cursor = document.createElement('span');
+            cursor.className = 'streaming-cursor';
+            leoDisplay.appendChild(cursor);
+
+            applyState('thinking');
+
+            try {
+                const response = await fetch('/stream_command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: prompt })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data:')) {
+                            const rawJson = trimmed.slice(5).trim();
+                            if (!rawJson) continue;
+                            try {
+                                const event = JSON.parse(rawJson);
+                                if (event.type === 'token') {
+                                    cursor.insertAdjacentText('beforebegin', event.data);
+                                    dialogueHistory.scrollTop = dialogueHistory.scrollHeight;
+                                } else if (event.type === 'tool_start') {
+                                    cursor.insertAdjacentHTML('beforebegin', `\n[${event.data}]\n`);
+                                    dialogueHistory.scrollTop = dialogueHistory.scrollHeight;
+                                }
+                            } catch (pe) {}
+                        }
+                    }
+                }
+            } catch (err) {
+                cursor.insertAdjacentText('beforebegin', `\n[Stream Error: ${err.message}]`);
+            } finally {
+                cursor.remove();
+                isStreaming = false;
+                dialogueHistory.scrollTop = dialogueHistory.scrollHeight;
+            }
+        }
+
+        commandForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = commandInput.value.trim();
+            if (text) {
+                commandInput.value = '';
+                executeCommandStream(text);
+            }
+        });
+
+        // Multimodal Screen Vision Button
+        btnScreenVision.addEventListener('click', () => {
+            executeCommandStream("What is on my screen?");
+        });
+
+        // Mic Click Trigger
+        btnMic.addEventListener('click', () => {
+            executeCommandStream("What is on my screen?");
+        });
+
+        // =====================================================================
+        // 4. IN-WINDOW HOTKEY LISTENERS (F8 & RIGHT ALT)
+        // =====================================================================
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F8' || e.code === 'F8') {
+                e.preventDefault();
+                toggleExpand();
+            }
+        });
+
+        // =====================================================================
+        // 5. STATUS & HARDWARE TELEMETRY POLLING
+        // =====================================================================
+        setInterval(async () => {
+            if (isStreaming) return;
+            try {
+                const res = await fetch('/get_telemetry');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.state) applyState(data.state);
+                if (data.cpu !== undefined && data.ram !== undefined && tTelemetry) {
+                    tTelemetry.innerText = `${Math.round(data.cpu)}% / ${Math.round(data.ram)}%`;
+                }
+            } catch (e) {}
+        }, 300);
+
+        // Spectrum Equalizer Animation
+        function animateSpectrum(state) {
+            const bars = document.querySelectorAll('.spectrum-bar');
+            bars.forEach((b, i) => {
+                if (state === 'speaking') {
+                    b.style.height = `${20 + Math.random() * 80}%`;
+                } else if (state === 'listening') {
+                    b.style.height = `${15 + Math.sin(Date.now() / 200 + i) * 40 + 20}%`;
+                } else if (state === 'thinking') {
+                    b.style.height = `${25 + Math.sin(Date.now() / 150 + i) * 20}%`;
+                } else {
+                    b.style.height = '14%';
+                }
+            });
+        }
         setInterval(() => {
-            fetch('/get_hud_status')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.user_text) updateUserSpeech(data.user_text);
-                    if (data.leo_text) updateLeoSpeech(data.leo_text);
-                    setVisualState(data.state);
-                })
-                .catch(() => {});
-        }, 500);
+            if (currentState !== 'standby') animateSpectrum(currentState);
+        }, 120);
+
+        // Initialize Base View
+        applyExpandedState(false);
+        applyState('standby');
     </script>
 </body>
 </html>
